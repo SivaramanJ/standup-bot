@@ -1,0 +1,104 @@
+<% content_for :title, "Standup Entries — Standup Bot" %>
+
+<div class="mb-6 flex items-center justify-between">
+  <div>
+    <h1 class="text-xl font-semibold text-gray-900">Standup Entries</h1>
+    <p class="text-sm text-gray-500 mt-0.5">
+      <%= @date.strftime("%A, %B %-d, %Y") %>
+    </p>
+  </div>
+
+  <!-- Date navigation -->
+  <div class="flex items-center gap-2">
+    <%= link_to "← Prev",
+        standup_entries_path(date: (@date - 1.day).to_s),
+        class: "text-sm text-gray-500 hover:text-gray-800 border border-gray-300
+                rounded-lg px-3 py-1.5 transition-colors" %>
+    <% unless @date >= Date.current %>
+      <%= link_to "Next →",
+          standup_entries_path(date: (@date + 1.day).to_s),
+          class: "text-sm text-gray-500 hover:text-gray-800 border border-gray-300
+                  rounded-lg px-3 py-1.5 transition-colors" %>
+    <% end %>
+    <%= link_to "Today",
+        standup_entries_path,
+        class: "text-sm text-brand-600 hover:text-brand-800 border border-brand-300
+                rounded-lg px-3 py-1.5 transition-colors" %>
+  </div>
+</div>
+
+<% if @entries.any? %>
+  <div class="space-y-4 mb-8">
+    <% @entries.each do |entry| %>
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-semibold text-gray-900"><%= entry.user.name %></h3>
+          <% if entry.has_blockers? %>
+            <span class="inline-flex items-center gap-1 text-xs font-medium text-red-600
+                         bg-red-50 border border-red-200 rounded-full px-2.5 py-0.5">
+              ⚠ Blocker
+            </span>
+          <% end %>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <div>
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Yesterday</p>
+            <p class="text-gray-700"><%= entry.yesterday %></p>
+          </div>
+          <div>
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Today</p>
+            <p class="text-gray-700"><%= entry.today %></p>
+          </div>
+          <% if entry.blockers.present? %>
+            <div class="sm:col-span-2 bg-red-50 rounded-lg p-3 border border-red-100">
+              <p class="text-xs font-medium text-red-500 uppercase tracking-wide mb-1">Blocker</p>
+              <p class="text-red-800 text-sm"><%= entry.blockers %></p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Generate/view summary section -->
+  <div class="bg-gradient-to-r from-brand-50 to-sky-50 border border-brand-200
+              rounded-xl p-6 flex items-center justify-between gap-4">
+    <div>
+      <% if @summary %>
+        <p class="font-medium text-brand-900">Summary generated ✓</p>
+        <p class="text-sm text-brand-600 mt-0.5">
+          <%= @entries.count %> update<%= @entries.count == 1 ? "" : "s" %> ·
+          <%= @summary.posted_to_slack? ? "Posted to Slack ✓" : "Not yet posted to Slack" %>
+        </p>
+      <% else %>
+        <p class="font-medium text-brand-900">Ready to generate summary</p>
+        <p class="text-sm text-brand-600 mt-0.5"><%= @entries.count %> update<%= @entries.count == 1 ? "" : "s" %> collected</p>
+      <% end %>
+    </div>
+
+    <div class="flex items-center gap-3 flex-shrink-0">
+      <% if @summary %>
+        <%= link_to "View Summary", standup_summary_path(@summary),
+            class: "bg-white border border-brand-300 text-brand-700 hover:bg-brand-50
+                    rounded-lg px-4 py-2 text-sm font-medium transition-colors" %>
+      <% end %>
+      <%= form_with url: generate_summary_path, method: :post, class: "inline" do |f| %>
+        <%= f.hidden_field :date, value: @date %>
+        <%= f.submit @summary ? "🔄 Regenerate" : "✨ Generate Summary",
+            class: "bg-brand-600 hover:bg-brand-700 text-white rounded-lg px-4 py-2
+                    text-sm font-medium transition-colors cursor-pointer" %>
+      <% end %>
+    </div>
+  </div>
+
+<% else %>
+  <div class="bg-white rounded-xl border border-gray-200 p-12 text-center">
+    <p class="text-4xl mb-3">📭</p>
+    <p class="text-gray-500">No standup entries for this date.</p>
+    <% if @date == Date.current %>
+      <%= link_to "Submit yours now →", new_standup_entry_path,
+          class: "mt-3 inline-block text-brand-600 hover:text-brand-800 text-sm underline" %>
+    <% end %>
+  </div>
+<% end %>

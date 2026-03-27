@@ -1,0 +1,96 @@
+<% content_for :title, "Summary — #{@summary.summary_date.strftime('%b %-d')} — Standup Bot" %>
+
+<!-- Header -->
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <div class="flex items-center gap-2 text-sm text-gray-500 mb-1">
+      <%= link_to "← Back to entries",
+          standup_entries_path(date: @summary.summary_date),
+          class: "hover:text-gray-700" %>
+    </div>
+    <h1 class="text-xl font-semibold text-gray-900">
+      Standup Summary
+    </h1>
+    <p class="text-sm text-gray-500 mt-0.5">
+      <%= @summary.summary_date.strftime("%A, %B %-d, %Y") %> ·
+      <%= @summary.entry_count %> update<%= @summary.entry_count == 1 ? "" : "s" %>
+    </p>
+  </div>
+
+  <div class="flex items-center gap-3">
+    <!-- Slack status badge -->
+    <% if @summary.posted_to_slack? %>
+      <span class="inline-flex items-center gap-1.5 text-xs font-medium text-green-700
+                   bg-green-50 border border-green-200 rounded-full px-3 py-1">
+        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+        Posted to Slack
+      </span>
+    <% end %>
+
+    <!-- Regenerate -->
+    <%= form_with url: generate_summary_path, method: :post, class: "inline" do |f| %>
+      <%= f.hidden_field :date, value: @summary.summary_date %>
+      <% if @current_team.slack_webhook_url.present? && !@summary.posted_to_slack? %>
+        <%= f.hidden_field :post_to_slack, value: "0" %>
+      <% end %>
+      <%= f.submit "🔄 Regenerate",
+          class: "border border-gray-300 text-gray-600 hover:border-gray-400 hover:text-gray-800
+                  rounded-lg px-3 py-1.5 text-sm transition-colors cursor-pointer bg-white" %>
+    <% end %>
+
+    <!-- Post to Slack -->
+    <% if @current_team.slack_webhook_url.present? && !@summary.posted_to_slack? %>
+      <%= form_with url: generate_summary_path, method: :post, class: "inline" do |f| %>
+        <%= f.hidden_field :date, value: @summary.summary_date %>
+        <%= f.hidden_field :post_to_slack, value: "1" %>
+        <%= f.submit "📣 Post to Slack",
+            class: "bg-brand-600 hover:bg-brand-700 text-white
+                    rounded-lg px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer" %>
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<!-- Summary card -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+  <div class="prose max-w-none text-gray-800 text-sm leading-relaxed">
+    <%= raw(render_markdown(@summary.content)) %>
+  </div>
+  <div class="mt-4 pt-4 border-t border-gray-100 text-xs text-gray-400">
+    Generated <%= time_ago_in_words(@summary.created_at) %> ago
+    <% if @summary.updated_at != @summary.created_at %>
+      · Last updated <%= time_ago_in_words(@summary.updated_at) %> ago
+    <% end %>
+  </div>
+</div>
+
+<!-- Individual entries (collapsed) -->
+<% if @entries.any? %>
+  <details class="group">
+    <summary class="cursor-pointer text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1.5 select-none">
+      <span class="group-open:rotate-90 transition-transform inline-block">▶</span>
+      Show individual entries (<%= @entries.count %>)
+    </summary>
+    <div class="mt-4 space-y-3">
+      <% @entries.each do |entry| %>
+        <div class="bg-white rounded-lg border border-gray-200 p-4 text-sm">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="font-semibold text-gray-800"><%= entry.user.name %></span>
+            <% if entry.has_blockers? %>
+              <span class="text-xs text-red-500 bg-red-50 border border-red-100
+                           rounded-full px-2 py-0.5">⚠ Blocker</span>
+            <% end %>
+          </div>
+          <p class="text-gray-500 text-xs uppercase tracking-wide mb-0.5">Yesterday</p>
+          <p class="text-gray-700 mb-2"><%= entry.yesterday %></p>
+          <p class="text-gray-500 text-xs uppercase tracking-wide mb-0.5">Today</p>
+          <p class="text-gray-700 mb-2"><%= entry.today %></p>
+          <% if entry.blockers.present? %>
+            <p class="text-gray-500 text-xs uppercase tracking-wide mb-0.5">Blocker</p>
+            <p class="text-red-700"><%= entry.blockers %></p>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </details>
+<% end %>

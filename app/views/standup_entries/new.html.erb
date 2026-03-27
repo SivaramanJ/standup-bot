@@ -1,0 +1,160 @@
+<% content_for :title, "Submit Standup — Standup Bot" %>
+
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+
+  <!-- Form (left) -->
+  <div class="lg:col-span-3">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <h1 class="text-xl font-semibold text-gray-900 mb-1">Daily Standup</h1>
+      <p class="text-sm text-gray-500 mb-6">
+        <%= Date.current.strftime("%A, %B %-d, %Y") %>
+      </p>
+
+      <%= form_with model: @entry, url: standup_entries_path, class: "space-y-5" do |f| %>
+        <% if @entry.errors.any? %>
+          <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p class="text-sm font-medium text-red-800 mb-1">Please fix the following:</p>
+            <ul class="text-sm text-red-700 list-disc list-inside space-y-0.5">
+              <% @entry.errors.full_messages.each do |msg| %>
+                <li><%= msg %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <!-- Who are you? -->
+        <div>
+          <%= f.label :user_id, "Who are you?", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+          <% if @users.any? %>
+            <%= f.select :user_id,
+                options_from_collection_for_select(@users, :id, :name, @entry.user_id),
+                { include_blank: "Select your name…" },
+                class: "w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm
+                        focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
+                        bg-white" %>
+          <% else %>
+            <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              No team members yet.
+              <%= link_to "Add users via Rails console", "#",
+                  class: "underline font-medium" %> to get started.
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Yesterday -->
+        <div>
+          <%= f.label :yesterday, class: "block text-sm font-medium text-gray-700 mb-1.5" do %>
+            What did you do <span class="text-brand-600">yesterday</span>?
+          <% end %>
+          <%= f.text_area :yesterday,
+              placeholder: "e.g. Reviewed PRs for the auth refactor, fixed the login bug #342…",
+              rows: 3,
+              class: "w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
+                      resize-y" %>
+        </div>
+
+        <!-- Today -->
+        <div>
+          <%= f.label :today, class: "block text-sm font-medium text-gray-700 mb-1.5" do %>
+            What are you doing <span class="text-brand-600">today</span>?
+          <% end %>
+          <%= f.text_area :today,
+              placeholder: "e.g. Working on the dashboard redesign, starting unit tests for billing module…",
+              rows: 3,
+              class: "w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
+                      resize-y" %>
+        </div>
+
+        <!-- Blockers -->
+        <div>
+          <%= f.label :blockers, class: "block text-sm font-medium text-gray-700 mb-1.5" do %>
+            Any <span class="text-red-500">blockers</span>?
+            <span class="font-normal text-gray-400">(optional)</span>
+          <% end %>
+          <%= f.text_area :blockers,
+              placeholder: "Leave blank if none. e.g. Waiting on design review, need access to staging DB…",
+              rows: 2,
+              class: "w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400
+                      resize-y" %>
+        </div>
+
+        <%= f.hidden_field :entry_date, value: Date.current %>
+
+        <div class="pt-1">
+          <%= f.submit "Submit Standup →",
+              class: "w-full bg-brand-600 hover:bg-brand-700 text-white font-medium
+                      rounded-lg px-4 py-2.5 text-sm transition-colors cursor-pointer" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Sidebar (right) -->
+  <div class="lg:col-span-2 space-y-5">
+
+    <!-- Today's status -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <h2 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
+        <span>👥</span> Team updates today
+        <span class="ml-auto text-xs font-normal text-gray-400">
+          <%= @today_entries.count %> submitted
+        </span>
+      </h2>
+
+      <% if @today_entries.any? %>
+        <ul class="space-y-2">
+          <% @today_entries.each do |entry| %>
+            <li class="flex items-center gap-2 text-sm">
+              <span class="w-2 h-2 rounded-full flex-shrink-0
+                           <%= entry.has_blockers? ? 'bg-red-400' : 'bg-green-400' %>"></span>
+              <span class="text-gray-700 font-medium"><%= entry.user.name %></span>
+              <% if entry.has_blockers? %>
+                <span class="text-xs text-red-500 ml-auto">⚠ blocker</span>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <p class="text-sm text-gray-400 italic">No updates yet — be the first!</p>
+      <% end %>
+    </div>
+
+    <!-- Generate summary button -->
+    <% if @today_entries.count >= 1 %>
+      <div class="bg-gradient-to-br from-brand-50 to-sky-50 rounded-xl border border-brand-200 p-5">
+        <h2 class="text-sm font-semibold text-brand-800 mb-1">Ready to summarize?</h2>
+        <p class="text-xs text-brand-600 mb-4">
+          <%= @today_entries.count %> update<%= @today_entries.count == 1 ? "" : "s" %> received.
+          Claude will synthesize them into a clean summary.
+        </p>
+
+        <%= form_with url: generate_summary_path, method: :post do |f| %>
+          <%= f.hidden_field :date, value: Date.current %>
+
+          <% if @current_team.slack_webhook_url.present? %>
+            <label class="flex items-center gap-2 text-xs text-brand-700 mb-3 cursor-pointer">
+              <%= f.check_box :post_to_slack, checked: false,
+                  class: "rounded border-brand-300 text-brand-600" %>
+              Also post to Slack
+            </label>
+          <% end %>
+
+          <%= f.submit @today_summary ? "🔄 Regenerate Summary" : "✨ Generate Summary",
+              class: "w-full bg-brand-600 hover:bg-brand-700 text-white font-medium
+                      rounded-lg px-4 py-2 text-sm transition-colors cursor-pointer" %>
+        <% end %>
+
+        <% if @today_summary %>
+          <div class="mt-3 text-center">
+            <%= link_to "View existing summary →", standup_summary_path(@today_summary),
+                class: "text-xs text-brand-600 hover:text-brand-800 underline" %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+  </div>
+</div>
